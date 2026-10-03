@@ -1,0 +1,38 @@
+[project]
+name = "camera-vision"
+version = "0.1.0"
+description = "Describe a live webcam environment with a local Ollama vision model."
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "httpx>=0.27",
+    "ollama>=0.4",
+    "opencv-python>=4.10",
+]
+
+[project.scripts]
+camera-vision = "camera_vision.cli:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3",
+    "ruff>=0.9",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/camera_vision"]
+
+[tool.pytest.ini_options]
+addopts = "-q"
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM", "RUF"]

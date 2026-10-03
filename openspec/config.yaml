@@ -1,0 +1,24 @@
+schema: spec-driven
+githubCopilot:
+  cloudAgent: false
+
+context: |
+  The application is macOS-first while keeping core Python behavior portable.
+  Camera frames and model inference must remain local through a locally running Ollama server.
+  Description-only stdout is a stable composition boundary for external text-to-speech tools;
+  status and error messages must go to stderr.
+  Automated tests must not require a physical camera or a running Ollama server.
+
+rules:
+  proposal:
+    - State explicitly what remains outside the first release.
+  specs:
+    - Express externally observable behavior and include failure scenarios.
+  tasks:
+    - Include automated validation and any manual hardware validation separately.
+
+operations:
+  apply:
+    guidance:
+      - Implement tasks in order and mark each completed task in tasks.md.
+      - Run the smallest relevant test and lint commands after each coherent change.
