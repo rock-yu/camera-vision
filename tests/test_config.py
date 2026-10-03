@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 import pytest
 
-from camera_vision.config import CaptureMode, OutputMode, parse_args
+from camera_vision.config import CaptureMode, OutputMode, SpeechEngine, parse_args
 
 
 def test_defaults() -> None:
@@ -15,6 +17,12 @@ def test_defaults() -> None:
     assert config.preview is True
     assert config.output_mode is OutputMode.HUMAN
     assert config.timeout == 120.0
+    assert config.speech is False
+    assert config.speech_engine is SpeechEngine.AUTO
+    assert config.speech_voice is None
+    assert config.speech_rate == 1.0
+    assert config.speech_model_path.name == "kokoro-v1.0.onnx"
+    assert config.speech_voices_path.name == "voices-v1.0.bin"
 
 
 def test_all_options() -> None:
@@ -37,6 +45,17 @@ def test_all_options() -> None:
             "description",
             "--timeout",
             "30",
+            "--speech",
+            "--speech-engine",
+            "kokoro",
+            "--speech-voice",
+            "af_heart",
+            "--speech-rate",
+            "1.2",
+            "--speech-model-path",
+            "~/models/kokoro.onnx",
+            "--speech-voices-path",
+            "~/models/voices.bin",
         ]
     )
 
@@ -49,6 +68,12 @@ def test_all_options() -> None:
     assert config.preview is False
     assert config.output_mode is OutputMode.DESCRIPTION
     assert config.timeout == 30.0
+    assert config.speech is True
+    assert config.speech_engine is SpeechEngine.KOKORO
+    assert config.speech_voice == "af_heart"
+    assert config.speech_rate == 1.2
+    assert config.speech_model_path == Path("~/models/kokoro.onnx").expanduser()
+    assert config.speech_voices_path == Path("~/models/voices.bin").expanduser()
 
 
 @pytest.mark.parametrize(
@@ -57,8 +82,10 @@ def test_all_options() -> None:
         ["--camera-index", "-1"],
         ["--interval", "0"],
         ["--timeout", "-1"],
+        ["--speech-rate", "0"],
         ["--model", " "],
         ["--prompt", " "],
+        ["--speech-voice", " "],
         ["--mode", "manual", "--no-preview"],
         ["--mode", "both", "--no-preview"],
     ],

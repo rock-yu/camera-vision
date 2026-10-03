@@ -96,6 +96,60 @@ done
 Replace macOS `say` with any local text-to-speech command or model that accepts text. The
 application does not install or launch a speech engine itself.
 
+### Built-in local speech
+
+Speech is optional and disabled by default. Install the neural speech extra:
+
+```bash
+uv sync --extra speech
+```
+
+Download the Kokoro model and preset voices to the default local cache:
+
+```bash
+mkdir -p ~/.cache/camera-vision
+curl -L \
+  https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.1/kokoro-v1.0.onnx \
+  -o ~/.cache/camera-vision/kokoro-v1.0.onnx
+curl -L \
+  https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.1/voices-v1.0.bin \
+  -o ~/.cache/camera-vision/voices-v1.0.bin
+```
+
+Run a narrated demo with a cadence suited to the observed `llama3.2-vision` latency:
+
+```bash
+uv run --extra speech camera-vision \
+  --speech \
+  --speech-engine auto \
+  --speech-voice af_sarah \
+  --speech-rate 1.0 \
+  --mode interval \
+  --interval 20 \
+  --prompt "Describe the most important visible objects or changes in one short sentence."
+```
+
+The recommended starting interval is **20-25 seconds**. Manual capture and any positive interval
+remain available. Override downloaded asset paths with `--speech-model-path` and
+`--speech-voices-path`.
+
+Speech engines:
+
+- `auto` (default when `--speech` is enabled) uses Kokoro when both local assets load. On macOS it
+  reports the reason on stderr and falls back to the built-in `say` engine when Kokoro is not
+  ready.
+- `kokoro` requires the speech extra and both local assets. Explicit selection never silently
+  falls back.
+- `macos` uses `/usr/bin/say` and does not require the speech extra.
+
+Kokoro defaults to the `af_sarah` preset. Pass another installed Kokoro preset with
+`--speech-voice`, or a voice listed by `say -v ?` when using `--speech-engine macos`. A speech rate
+of `1.0` is Kokoro's normal speed and maps to approximately 200 words per minute for macOS speech.
+
+After the dependencies and model assets are installed, Kokoro synthesis and playback are fully
+local. The macOS fallback is also local. Existing terminal and preview descriptions remain
+available if speech fails after startup.
+
 Run `uv run camera-vision --help` for every option.
 
 ## Behavior
@@ -109,8 +163,19 @@ Run `uv run camera-vision --help` for every option.
   the latest result. Terminal output retains the complete description.
 - Expected image-encoding and Ollama request failures are reported and the application remains
   ready for a later capture.
+- Speech runs outside the camera loop. The active sentence finishes; while it plays, only the
+  newest pending description is retained and older pending descriptions are discarded.
+- Speech errors are reported on stderr while text output and later camera captures continue.
+- Quitting prevents pending narration from starting and waits for the active sentence to finish
+  before closing speech resources.
 - Quitting waits for any active Ollama request up to the configured request timeout before process
   shutdown completes.
+
+For spoken demos, prefer a concise prompt such as:
+
+```text
+Describe the most important visible objects or changes in one short sentence.
+```
 
 ## Troubleshooting
 
@@ -155,6 +220,20 @@ the installed runtime is too old to load their architecture.
 
 Skipped captures are expected backpressure. Increase `--interval` or choose a smaller local vision
 model. The application intentionally does not process stale queued frames.
+
+### Speech does not start
+
+- For Kokoro, run `uv sync --extra speech` and confirm both asset files exist at the paths shown by
+  `uv run camera-vision --help`.
+- Use `--speech-engine kokoro` to turn missing dependencies or assets into an explicit startup
+  error instead of automatic macOS fallback.
+- For system speech, confirm `/usr/bin/say` exists and list available voices with `say -v ?`.
+- Do not pass a Kokoro preset name to the macOS engine; voice names are engine-specific.
+- Check **System Settings > Sound > Output** for the selected output device and volume.
+
+Speech synthesis or playback errors after startup are reported on stderr without stopping camera
+analysis. If audio hardware remains unavailable, omit `--speech` and use text output or the
+existing stdout pipeline.
 
 ## Development
 

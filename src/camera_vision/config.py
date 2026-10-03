@@ -5,8 +5,14 @@ import os
 from collections.abc import Sequence
 from dataclasses import dataclass
 from enum import StrEnum
+from pathlib import Path
 
 DEFAULT_PROMPT = "Describe what you see in this environment in detail."
+DEFAULT_SPEECH_CACHE = (
+    Path(os.environ.get("XDG_CACHE_HOME", Path.home() / ".cache")) / "camera-vision"
+)
+DEFAULT_SPEECH_MODEL_PATH = DEFAULT_SPEECH_CACHE / "kokoro-v1.0.onnx"
+DEFAULT_SPEECH_VOICES_PATH = DEFAULT_SPEECH_CACHE / "voices-v1.0.bin"
 
 
 class CaptureMode(StrEnum):
@@ -28,6 +34,12 @@ class OutputMode(StrEnum):
     DESCRIPTION = "description"
 
 
+class SpeechEngine(StrEnum):
+    AUTO = "auto"
+    KOKORO = "kokoro"
+    MACOS = "macos"
+
+
 @dataclass(frozen=True, slots=True)
 class AppConfig:
     model: str
@@ -39,6 +51,12 @@ class AppConfig:
     preview: bool
     output_mode: OutputMode
     timeout: float
+    speech: bool
+    speech_engine: SpeechEngine
+    speech_voice: str | None
+    speech_rate: float
+    speech_model_path: Path
+    speech_voices_path: Path
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -86,6 +104,40 @@ def build_parser() -> argparse.ArgumentParser:
         default=120.0,
         help="Ollama request timeout in seconds.",
     )
+    parser.add_argument(
+        "--speech",
+        action="store_true",
+        help="Narrate successful descriptions through the local audio output.",
+    )
+    parser.add_argument(
+        "--speech-engine",
+        type=SpeechEngine,
+        choices=SpeechEngine,
+        default=SpeechEngine.AUTO,
+        help="Speech engine: prefer Kokoro with macOS fallback, Kokoro only, or macOS only.",
+    )
+    parser.add_argument(
+        "--speech-voice",
+        help="Engine-specific preset voice. Defaults to af_sarah for Kokoro or system default.",
+    )
+    parser.add_argument(
+        "--speech-rate",
+        type=float,
+        default=1.0,
+        help="Speech rate multiplier. macOS maps 1.0 to approximately 200 words/minute.",
+    )
+    parser.add_argument(
+        "--speech-model-path",
+        type=Path,
+        default=DEFAULT_SPEECH_MODEL_PATH,
+        help=f"Kokoro ONNX model path (default: {DEFAULT_SPEECH_MODEL_PATH}).",
+    )
+    parser.add_argument(
+        "--speech-voices-path",
+        type=Path,
+        default=DEFAULT_SPEECH_VOICES_PATH,
+        help=f"Kokoro voices data path (default: {DEFAULT_SPEECH_VOICES_PATH}).",
+    )
     return parser
 
 
@@ -99,10 +151,14 @@ def parse_args(argv: Sequence[str] | None = None) -> AppConfig:
         parser.error("--interval must be greater than zero")
     if args.timeout <= 0:
         parser.error("--timeout must be greater than zero")
+    if args.speech_rate <= 0:
+        parser.error("--speech-rate must be greater than zero")
     if not args.model.strip():
         parser.error("--model cannot be empty")
     if not args.prompt.strip():
         parser.error("--prompt cannot be empty")
+    if args.speech_voice is not None and not args.speech_voice.strip():
+        parser.error("--speech-voice cannot be empty")
     if args.mode.supports_manual and not args.preview:
         parser.error("manual capture requires --preview; use --mode interval with --no-preview")
 
@@ -116,4 +172,10 @@ def parse_args(argv: Sequence[str] | None = None) -> AppConfig:
         preview=args.preview,
         output_mode=args.output,
         timeout=args.timeout,
+        speech=args.speech,
+        speech_engine=args.speech_engine,
+        speech_voice=args.speech_voice,
+        speech_rate=args.speech_rate,
+        speech_model_path=args.speech_model_path.expanduser(),
+        speech_voices_path=args.speech_voices_path.expanduser(),
     )

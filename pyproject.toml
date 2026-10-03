@@ -10,6 +10,12 @@ dependencies = [
     "opencv-python>=4.10",
 ]
 
+[project.optional-dependencies]
+speech = [
+    "kokoro-onnx>=0.4,<1",
+    "sounddevice>=0.5,<1",
+]
+
 [project.scripts]
 camera-vision = "camera_vision.cli:main"
 

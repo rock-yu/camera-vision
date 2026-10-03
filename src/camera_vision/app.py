@@ -10,6 +10,7 @@ from camera_vision.analysis import AnalysisController
 from camera_vision.camera import FrameEncodingError, add_preview_overlay, encode_jpeg
 from camera_vision.config import AppConfig
 from camera_vision.output import Reporter
+from camera_vision.speech_controller import SpeechController
 from camera_vision.vision import VisionClient
 
 WINDOW_TITLE = "Camera Vision"
@@ -20,6 +21,7 @@ def run(
     client: VisionClient,
     reporter: Reporter,
     *,
+    speech: SpeechController | None = None,
     cv: Any = cv2,
     clock: Callable[[], float] = time.monotonic,
 ) -> int:
@@ -29,6 +31,8 @@ def run(
             f"could not open camera index {config.camera_index}; check camera permissions and index"
         )
         capture.release()
+        if speech is not None:
+            speech.close()
         return 2
 
     controller = AnalysisController(client)
@@ -58,6 +62,8 @@ def run(
                 elif outcome.description is not None:
                     latest_description = outcome.description
                     reporter.description(outcome.description)
+                    if speech is not None:
+                        speech.submit(outcome.description)
                     status = "Ready"
 
             key = -1
@@ -92,6 +98,8 @@ def run(
         return 0
     finally:
         controller.close()
+        if speech is not None:
+            speech.close()
         capture.release()
         if config.preview:
             cv.destroyAllWindows()

@@ -5,6 +5,8 @@ from collections.abc import Sequence
 from camera_vision.app import run
 from camera_vision.config import parse_args
 from camera_vision.output import Reporter
+from camera_vision.speech import SpeechInitializationError, create_speech_engine
+from camera_vision.speech_controller import SpeechController
 from camera_vision.vision import OllamaVisionClient
 
 
@@ -16,4 +18,11 @@ def main(argv: Sequence[str] | None = None) -> int:
         host=config.host,
         timeout=config.timeout,
     )
-    return run(config, client, reporter)
+    try:
+        speech_engine = create_speech_engine(config, reporter.status)
+    except SpeechInitializationError as exc:
+        reporter.error(str(exc))
+        return 2
+
+    speech = SpeechController(speech_engine, reporter.error) if speech_engine is not None else None
+    return run(config, client, reporter, speech=speech)
