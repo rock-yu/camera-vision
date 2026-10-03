@@ -8,26 +8,59 @@ when Ollama and any downstream speech tool are local.
 
 - macOS with camera access enabled for your terminal application
 - [uv](https://docs.astral.sh/uv/getting-started/installation/)
-- [Ollama](https://ollama.com/download)
+- Ollama **0.24.0** when using the default `llama3.2-vision` model
 - A local Ollama vision model; the default is `llama3.2-vision`
 
 The Python code uses portable OpenCV APIs, but this first release documents and targets macOS.
 
+> [!IMPORTANT]
+> The default model currently requires Ollama **0.24.0**. Newer releases can fail with
+> `unknown model architecture: 'mllama'`; see
+> [ollama/ollama#16490](https://github.com/ollama/ollama/issues/16490). Do not install or upgrade
+> Ollama with Homebrew if you intend to use `llama3.2-vision`, because Homebrew installs the latest
+> release. Alternatively, keep current Ollama and select a supported vision model with `--model`.
+
 ## Setup
 
-Install and start Ollama, then download the default vision model:
+### 1. Install the compatible Ollama version
+
+Download
+[Ollama-darwin.zip for v0.24.0](https://github.com/ollama/ollama/releases/download/v0.24.0/Ollama-darwin.zip),
+extract it, move **Ollama.app** to **Applications**, and launch it. If a newer Ollama version is
+already installed, quit it and replace the application before continuing.
+
+Verify the server and CLI are both using the compatible version:
 
 ```bash
-brew install ollama
-ollama serve
+ollama --version
+# ollama version is 0.24.0
 ```
 
-In another terminal:
+Avoid accepting an Ollama update while this compatibility workaround is required. If the desktop
+application is not running the server, start it from a terminal with `ollama serve`.
+
+### 2. Pull the model and install Python dependencies
 
 ```bash
 ollama pull llama3.2-vision
 uv sync
 ```
+
+Confirm the model can load before troubleshooting the camera application:
+
+```bash
+ollama run llama3.2-vision "Say ready."
+```
+
+If you prefer a newer Ollama release, install it normally, pull a vision model supported by that
+release, and pass its name explicitly:
+
+```bash
+ollama pull qwen2.5vl:3b
+uv run camera-vision --model qwen2.5vl:3b
+```
+
+### 3. Run Camera Vision
 
 Run the application:
 
@@ -212,9 +245,14 @@ Pull the exact configured model:
 ollama pull llama3.2-vision
 ```
 
-If Ollama reports an unknown model architecture or terminates while loading a freshly pulled
-model, update the Ollama application/runtime and retry. The model files can be present even when
-the installed runtime is too old to load their architecture.
+If `llama3.2-vision` reports `unknown model architecture: 'mllama'`, check `ollama --version`.
+This is the known [Ollama issue #16490](https://github.com/ollama/ollama/issues/16490), not a
+missing model. Install Ollama 0.24.0 using the pinned macOS release link in **Setup**, fully quit
+any newer Ollama server, relaunch 0.24.0, and verify the version again. Do not update Ollama to fix
+this specific error.
+
+If you need a newer Ollama release, use a vision model supported by that release and supply it with
+`--model` instead of using the default.
 
 ### Analysis is slower than the interval
 
